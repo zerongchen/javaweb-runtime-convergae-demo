@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<project name="sxf test server" xmlns:jacoco="antlib:org.jacoco.ant" default="jacoco" basedir=".">
+
+  <!-- jacoco report src、classes目录 -->
+  <property name="srcPath" value="src/main/java"/>
+  <property name="classPath" value="target/classes"/>
+
+  <!-- 定义变量名称 -->
+  <!-- jacoco report jenkins本地目录 -->
+  <property name="jacocoexecPath" value="jacoco.exec"/>
+  <property name="jacocoexecUnitPath" value="jacoco-unit.exec"/>
+
+  <!-- jacoco服务器端配置，配置了javaagent的应用服务器IP、Port -->
+  <property name="server_ip" value="172.24.153.38"/>
+  <property name="server_port" value="6302"/>
+
+  <!-- 这个地方是相当于apache ant 会处理当前这个xml文件，但是JaCOCo特性的东西会依赖当前这个jacoco.ant。
+		1，简易实现，直接将jacocoant.jar置于ANT_HOME/lib目录下 （CI服务器）
+		2，在taskdef中定义该文件的路劲，如下
+		下载路径 https://oss.sonatype.org/#nexus-search;gav~org.jacoco~org.jacoco.ant~0.8.6~~ // 0.8.6参考pom里面的version版本号
+	-->
+  <taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml">
+    <classpath path="/usr/share/ant/lib/jacocoant.jar"/>
+  </taskdef>
+
+  <!-- dump 出运行时的代码覆盖率-->
+  <target name="dump">
+    <echo message="jacoco 从远程服务器dump executiondata"/>
+    <delete file="${jacocoexecPath}"/>
+    <jacoco:dump address="${server_ip}" reset="true" destfile="${jacocoexecPath}"
+      port="${server_port}" append="false"/>
+  </target>
+
+  <!-- 运行时的代码覆盖率和单测覆盖率合并 ， 这里采用的直接目录下做merge -->
+  <target name="merge">
+    <jacoco:merge destfile="merged.exec">
+      <fileset dir="./" includes="*.exec"/>
+    </jacoco:merge>
+  </target>
+  <target name="merge_report">
+    <jacoco:report>
+      <executiondata>
+        <file file="merged.exec"/>
+      </executiondata>
+      <structure name="JaCoCo Ant Example">
+        <classfiles>
+          <fileset dir="${classPath}"/>
+        </classfiles>
+        <sourcefiles encoding="UTF-8">
+          <fileset dir="${srcPath}"/>
+        </sourcefiles>
+      </structure>
+      <xml destfile="merged-report.xml"/>
+      <html destdir="merged-report"/>
+    </jacoco:report>
+  </target>
+  <target name="report" depends="dump,merge,merge_report"/>
+</project>
